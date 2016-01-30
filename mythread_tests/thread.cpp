@@ -12,8 +12,6 @@
 using namespace std;
 
 typedef void * MyThread;
-typedef void * MySemaphore;
-
 typedef struct threads
 {
 	struct threads* parent;
@@ -24,16 +22,9 @@ typedef struct threads
 
 } THREAD;
 
-typedef struct semaphores
-{
-	int num;
-	queue <struct threads*> blockedThreads;
-} SEMAPHORE;
-
 vector<THREAD *> threadList;
 queue<THREAD *> readyQueue;
-
-list<SEMAPHORE *> semaphoreList;
+list<THREAD *> blockedList;
 
 THREAD *currentThread;
 ucontext_t threadHandlerContext;
@@ -50,57 +41,6 @@ void MyThreadYield (void);
 int MyThreadJoin(MyThread);
 void MyThreadJoinAll();
 void MyThreadExit();
-
-
-MySemaphore MySemaphoreInit(int initialValue)
-{
-	SEMAPHORE * temp = new SEMAPHORE;
-	temp->num = initialValue;
-	semaphoreList.push_back(temp);
-
-	return (MySemaphore *)temp;
-}
-
-void MySemaphoreSignal(MySemaphore sem)
-{
-	SEMAPHORE * temp = (SEMAPHORE *)sem;
-	temp->num++;
-
-	if(temp->num <= 0)
-	{
-		if(temp->blockedThreads.size() != 0)
-		{
-			readyQueue.push_back( temp->front() );
-			temp->pop();
-		}
-	}
-}
-
-void MySemaphoreWait(MySemaphore sem)
-{
-	SEMAPHORE * temp = (SEMAPHORE *)sem;
-	temp->num--;
-	if( temp->num < 0)
-	{
-		(temp->blockedThreads).push_back( currentThread );
-	}
-}
-
-int MySemaphoreDestroy(MySemaphore sem)
-{
-	SEMAPHORE * temp = (SEMAPHORE *)sem;
-	if( temp->blockedThreads.size() == 0 )
-	{
-		// cout << "semaphore delete!\n";
- 		free temp;
-		return 0;
-	}
-	else
-	{
-		// cout << "Illegal semaphore delete!\n";
-		return -1;
-	}
-}
 
 void threadHandler()
 {
