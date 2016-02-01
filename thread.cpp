@@ -18,7 +18,6 @@ typedef struct threads
 {
 	struct threads* parent;
 	ucontext_t value;
-	int no;
 	list <struct threads*> blockingChildren;
 	bool completed;
 
@@ -50,6 +49,11 @@ void MyThreadYield (void);
 int MyThreadJoin(MyThread);
 void MyThreadJoinAll();
 void MyThreadExit();
+MySemaphore MySemaphoreInit(int initialValue);
+void MySemaphoreSignal(MySemaphore sem);
+void MySemaphoreWait(MySemaphore sem);
+int MySemaphoreDestroy(MySemaphore sem);
+
 
 
 MySemaphore MySemaphoreInit(int initialValue)
@@ -58,7 +62,7 @@ MySemaphore MySemaphoreInit(int initialValue)
 	temp->num = initialValue;
 	semaphoreList.push_back(temp);
 
-	return (MySemaphore *)temp;
+	return (MySemaphore)temp;
 }
 
 void MySemaphoreSignal(MySemaphore sem)
@@ -70,8 +74,8 @@ void MySemaphoreSignal(MySemaphore sem)
 	{
 		if(temp->blockedThreads.size() != 0)
 		{
-			readyQueue.push_back( temp->front() );
-			temp->pop();
+			readyQueue.push( temp->blockedThreads.front() );
+			temp->blockedThreads.pop();
 		}
 	}
 }
@@ -79,10 +83,11 @@ void MySemaphoreSignal(MySemaphore sem)
 void MySemaphoreWait(MySemaphore sem)
 {
 	SEMAPHORE * temp = (SEMAPHORE *)sem;
-	temp->num--;
+	(temp->num)--;
 	if( temp->num < 0)
 	{
-		(temp->blockedThreads).push_back( currentThread );
+		(temp->blockedThreads).push( currentThread );
+		swapcontext( &(currentThread->value), &threadHandlerContext );
 	}
 }
 
@@ -92,7 +97,7 @@ int MySemaphoreDestroy(MySemaphore sem)
 	if( temp->blockedThreads.size() == 0 )
 	{
 		// cout << "semaphore delete!\n";
- 		free temp;
+ 		delete temp;
 		return 0;
 	}
 	else
@@ -207,7 +212,6 @@ MyThread MyThreadCreate ( void(*start_func)(void *), void *args)
 	newThread->value.uc_stack.ss_sp =  malloc(STACK_SIZE);
     newThread->value.uc_stack.ss_size = STACK_SIZE;
     newThread->value.uc_stack.ss_flags = 0;   
-    newThread->no = *(int *)args;
     
     newThread->completed = false;
     
@@ -236,8 +240,7 @@ void MyThreadInit ( void(*start_func)(void *), void *args)
 	newThread->value.uc_stack.ss_sp =  malloc(STACK_SIZE);
     newThread->value.uc_stack.ss_size = STACK_SIZE;
     newThread->value.uc_stack.ss_flags = 0;   
-    newThread->no = *(int *)args;
-   
+    
     newThread->completed = false;
     
     makecontext( &(newThread->value), (void(*)(void))start_func, 1, args );
@@ -247,26 +250,36 @@ void MyThreadInit ( void(*start_func)(void *), void *args)
 	threadHandler();
 }
 
+MySemaphore stemp;
+
 void show2(void *a)
 {
-	MyThreadYield();
 	cout<<"In show2\n";
+	MySemaphoreWait(stemp);
+	MyThreadYield();
+	MySemaphoreSignal(stemp);
+	cout<<"Show2 exiting\n";
 	MyThreadExit();
 }
 void show3(void *a)
 {
 	cout<<"In show3\n";
+	MySemaphoreWait(stemp);
+	MySemaphoreSignal(stemp);
+	cout<<"Show3 exiting\n";
 	MyThreadExit();
 }
 void show(void *a)
 {
 	int num = 2;
-	
+
 	cout<<"In show\n";
+	MySemaphoreWait(stemp);
 	MyThreadCreate(show2, &num);
 	MyThreadCreate(show3, &num);
 	// MyThreadYield();
 	MyThreadJoinAll();
+	MySemaphoreSignal(stemp);
 	cout<<"Returned after join\n";
 	MyThreadExit();
 }
@@ -275,7 +288,9 @@ int main()
 {
 	int num1 = 1;
 	
+	stemp = MySemaphoreInit(2);
 	MyThreadInit( show, &num1);
+	MySemaphoreDestroy(stemp);
 	cout<<"End of trial\n";
 	return 0;
 }
