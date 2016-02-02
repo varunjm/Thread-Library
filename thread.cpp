@@ -176,7 +176,6 @@ void MyThreadJoinAll()
 		return ;
 	// cout<<"Thread join on "<<liveChildrenCount<<" children\n";
 	swapcontext( &(currentThread->value), &threadHandlerContext );
-
 }
 
 int MyThreadJoin(MyThread T)
@@ -288,7 +287,7 @@ int main()
 {
 	int num1 = 1;
 	
-	stemp = MySemaphoreInit(2);
+	stemp = MySemaphoreInit(1);
 	MyThreadInit( show, &num1);
 	MySemaphoreDestroy(stemp);
 	cout<<"End of trial\n";

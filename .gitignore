@@ -1,5 +1,10 @@
 *.txt
 *.out
-*.c
+ping.c
+tree.c
+passing.c
+one.c
+fib.c
 *.h
 Question and material/
+mythread.a
