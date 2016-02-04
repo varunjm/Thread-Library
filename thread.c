@@ -118,10 +118,6 @@ int erase(threadVector head)
 	}
 	return -1;
 }
-// vector<THREAD *> threadList;
-// queue<THREAD *> readyQueue;
-// list<SEMAPHORE *> semaphoreList;   // not necessary
-
 
 bool InitFlag = false;
 
@@ -216,7 +212,6 @@ void threadHandler()
 		// cout<< "Handler"currentThread->no<<endl;
 		swapcontext(&threadHandlerContext, &(currentThread->value) );
 	}while(!empty(readyQueue));
-	//cout<<"Out of here!\n";
 }
 
 void MyThreadExit()
