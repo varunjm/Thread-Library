@@ -56,34 +56,25 @@ MySemaphore MySemaphoreInit(int initialValue)
 	SEMAPHORE * temp = new SEMAPHORE;
 	temp->num = initialValue;
 	semaphoreList.push_back(temp);
-
 	return (MySemaphore)temp;
 }
 
 void MySemaphoreSignal(MySemaphore sem)
 {
-	if(sem == NULL) return ;
-
+	if(sem == NULL) return;
 	SEMAPHORE * temp = (SEMAPHORE *)sem;
-	temp->num++;
-
-	if(temp->num <= 0)
+	if(temp->num++ < 0)
 	{
-		if(temp->blockedThreads.size() != 0)
-		{
-			readyQueue.push( temp->blockedThreads.front() );
-			temp->blockedThreads.pop();
-		}
+		readyQueue.push(temp->blockedThreads.front());
+		temp->blockedThreads.pop();
 	}
 }
 
 void MySemaphoreWait(MySemaphore sem)
 {
-	if(sem == NULL) return ;
-
+	if(sem == NULL) return;
 	SEMAPHORE * temp = (SEMAPHORE *)sem;
-	(temp->num)--;
-	if( temp->num < 0)
+	if(--temp->num < 0)
 	{
 		(temp->blockedThreads).push( currentThread );
 		swapcontext( &(currentThread->value), &threadHandlerContext );
@@ -93,19 +84,15 @@ void MySemaphoreWait(MySemaphore sem)
 int MySemaphoreDestroy(MySemaphore sem)
 {
 	if(sem == NULL) return -1;
-	
 	SEMAPHORE * temp = (SEMAPHORE *)sem;
-	if( temp->blockedThreads.size() == 0 )
+	if(temp->blockedThreads.empty())
 	{
 		// cout << "semaphore delete!\n";
  		delete temp;
 		return 0;
 	}
-	else
-	{
-		// cout << "Illegal semaphore delete!\n";
-		return -1;
-	}
+	// cout << "Illegal semaphore delete!\n";
+	return -1;
 }
 
 void threadHandler()
@@ -126,38 +113,15 @@ void MyThreadExit()
 	if(!InitFlag)
 	{
 		// cout<<"Illegal MyThreadCreate call!\n";
-		return ;
+		return;
 	}
 
-	THREAD * temp = currentThread->parent;
-
-	if( temp != NULL)
+	THREAD *temp;
+	if(temp = currentThread->parent)
 	{
-		switch( (temp->blockingChildren).size() )
-		{
-			case 0:
-				// cout<<"No blocking children\n";
-				break;
-			case 1:
-			{
-				if( (temp->blockingChildren).front() == currentThread )
-				{
-					readyQueue.push(temp);
-					(temp->blockingChildren).erase((temp->blockingChildren).begin());
-				}
-				break;
-			}
-			default:
-			{	
-				for (list<struct threads *>::iterator it=(temp->blockingChildren).begin() ; it != (temp->blockingChildren).end(); ++it)
-	    			if( *it == currentThread )
-	    			{
-	    				(temp->blockingChildren).erase(it);
-	    				break;
-	    			}
-	    		break;
-			} 
-		}
+		temp->blockingChildren.remove(currentThread);
+		if((temp->blockingChildren).empty())
+			readyQueue.push(temp);
 	}	
 	currentThread->completed = true;
 	free (currentThread->value.uc_stack.ss_sp) ;
@@ -170,18 +134,18 @@ void MyThreadJoinAll()
 	if(!InitFlag)
 	{
 		// cout<<"Illegal MyThreadCreate call!\n";
-		return ;
+		return;
 	}
-	for(vector<struct threads *>::iterator it=threadList.begin() ; it != threadList.end(); ++it)
+	for(auto &thread : threadList)
 	{
-		if( currentThread == (*it)->parent && (*it)->completed == false )
+		if( currentThread == thread->parent && thread->completed == false )
 		{
-			(currentThread->blockingChildren).push_back(*it);
+			(currentThread->blockingChildren).push_back(thread);
 			liveChildrenCount++;
 		}
 	}
 	if(liveChildrenCount == 0)
-		return ;
+		return;
 	// cout<<"Thread join on "<<liveChildrenCount<<" children\n";
 	swapcontext( &(currentThread->value), &threadHandlerContext );
 }
@@ -202,8 +166,9 @@ int MyThreadJoin(MyThread T)
 	
 	//	cout<<"Correct invocation: "<<((THREAD *)T)->no<<endl;
 	
-	(currentThread->blockingChildren).push_back( (THREAD *)T );
-	swapcontext( &(currentThread->value), &threadHandlerContext );
+	(currentThread->blockingChildren).push_back((THREAD *)T);
+	swapcontext(&(currentThread->value), &threadHandlerContext);
+	return 0;
 }
 
 void MyThreadYield(void)
@@ -211,7 +176,7 @@ void MyThreadYield(void)
 	if(!InitFlag)
 	{
 		// cout<<"Illegal MyThreadCreate call!\n";
-		return ;
+		return;
 	}
 	readyQueue.push( currentThread );
 	swapcontext( &(currentThread->value), &threadHandlerContext );
@@ -260,12 +225,12 @@ void MyThreadInit ( void(*start_func)(void *), void *args)
 
 	newThread = new THREAD;
 	if( newThread == NULL )  
-		return ;
+		return;
     newThread->parent = NULL;
 	getcontext( &(newThread->value) );
 	newThread->value.uc_link = &threadHandlerContext;
 	newThread->value.uc_stack.ss_sp =  malloc(STACK_SIZE);
-    if( newThread->value.uc_stack.ss_sp == NULL ) return ;
+    if( newThread->value.uc_stack.ss_sp == NULL ) return;
     newThread->value.uc_stack.ss_size = STACK_SIZE;
     newThread->value.uc_stack.ss_flags = 0;   
     
