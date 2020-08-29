@@ -22,6 +22,7 @@ This is an Non Pre-emptive thread library which includes the following thread li
 $ make
 ```
 This generates a mythread.a archive file. One can use this as "mythread.h" header in a C/C++ program to use all the functionalities listed above.
+Then it compiles tests/semtestcase.c with mythread.a as the thread library and runs the program.
 
 ### Note
 This repository has both 'C' and 'C++' implementations of the thread library.
